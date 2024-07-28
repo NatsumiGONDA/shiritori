@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>しりとりアプリ</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: cornsilk;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            text-align: center;    
+        }
+        input[type="text"] {
+            width: 80%;
+            padding: 10px;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 1.2em;
+            cursor: pointer;
+        }
+        .error {
+            color: red;
+        }
+        .game-over {
+            color: blue;
+            font-size: 1.2em;
+            white-space: pre-line;
+        }
+        .word-history {
+            margin-top: 20px;
+            background-color: peachpuff;
+        }
+        .word-history ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        .word-history li {
+            padding: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>しりとりアプリ</h1>
+    <div id="previous-word">直前の単語: <span id="lastWord"></span></div>
+    <div id="lengthDisplay" style="font-size:2em;"><span id="lastChar"></span> <span id="currentLength">3</span></div>
+    <div id="inputArea">
+        <input type="text" id="inputWord" placeholder="単語をひらがなで入力">
+        <button onclick="submitWord()">送信</button>
+    </div>
+    <button onclick="resetGame()" style="background-color:red; color: white;">リセット</button>
+    <div id="message" class="error"></div>
+    <div id="gameOver" class="game-over"></div>
+    <div class="word-history">
+        <h2>単語の履歴</h2>
+        <ul id="wordList"></ul>
+    </div>
+    
+    <script type="text/JavaScript">
+        let lastWord = "";
+        let lastChar = getLastValidChar(lastWord);
+        let usedWords = [];
+        let lengthIndex = 1;
+        const lengths = [2, 3, 4, 5, 6, 7];
+
+        //文字数指定をランダムに
+        function getRandomLengthIndex() {
+            return Math.floor(Math.random() * lengths.length);
+        }
+
+        //ひらがなか「ー」だけかの確認
+        function isHiragana(str) {
+            return /^[ぁ-んー]+$/.test(str);
+        }
+
+        //もし「ー」で終わる単語のとき次はその前の文字から始める
+        function getLastValidChar(word) {
+            let lc = word.slice(-1);
+            // 最後の文字が「ー」の場合、その一つ前の文字を返す
+            if(lc == "ー") lc = word.slice(-2, -1);
+            //最後が小文字なら大文字に直す
+            if(lc == "ぁ") return "あ";
+            else if(lc == "ぃ") return "い";
+            else if(lc == "ぅ") return "う";
+            else if(lc == "ぇ") return "え";
+            else if(lc == "ぉ") return "お";
+            else if(lc == "ゃ") return "や";
+            else if(lc == "ゅ") return "ゆ";
+            else if(lc == "ょ") return "よ";
+            else return lc;
+        }
+        
+        // 開始時の頭文字をランダムに決める(を、ん、小文字を除く)
+        function getRandomHiragana() {
+            const initH = "あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわ";
+            const randomIndex = Math.floor(Math.random() * initH.length);
+            return initH[randomIndex];
+        }
+
+        //指定文字数の表示
+        function updateLengthDisplay() {
+            const currentLength = lengths[lengthIndex];
+            let displayText;
+            if(currentLength == 7) displayText = "7+"; 
+            else displayText = `${currentLength}`;
+            document.getElementById('currentLength').textContent = displayText;
+        }
+
+        function submitWord() {
+            const inputAreaElement = document.getElementById('inputArea');
+            const inputWordElement = document.getElementById('inputWord');
+            const messageElement = document.getElementById('message');
+            const gameOverElement = document.getElementById('gameOver');
+            const wordListElement = document.getElementById('wordList');
+            const newWord = inputWordElement.value.trim();
+            messageElement.textContent = "";
+            gameOverElement.textContent = "";
+            const currentLength = lengths[lengthIndex];
+            const wordLength = newWord.length;
+            
+            if (newWord == "") {
+                messageElement.textContent = "単語をひらがなで入力してください。";
+                return;
+            }
+            //すべてひらがなか
+            if(!isHiragana(newWord)) {
+                messageElement.textContent = "！！ひらがな以外の文字が使われています！！"
+                return;
+            }
+            //指定文字数の確認
+            if (currentLength == 7) {
+                if (wordLength < 7) {
+                    messageElement.textContent = "！！7文字以上の単語にしてください！！";
+                    return;
+                }
+            } else {
+                if (wordLength != currentLength) {
+                    messageElement.textContent = `！！${currentLength}文字の単語にしてください！！`;
+            return;
+        }
+    }
+            //使用済みでないか
+            if (usedWords.includes(newWord)) {
+                gameOverElement.textContent = "ゲームオーバー\n残念。。。使用済みの単語です。";
+                inputAreaElement.style.display = 'none';
+                return;
+            }
+            //前の言葉とつながっているか
+            if (lastChar != newWord[0]) {
+                messageElement.textContent = "！！前の言葉の最後の文字から始まっていません！！";
+                return;
+            }
+            //「ん」で終わっていないか
+            if (newWord.slice(-1) == "ん") {
+                gameOverElement.textContent = "ゲームオーバー\n残念。。。「ん」で終わる単語です。";
+                inputAreaElement.style.display = 'none';
+                return;
+            }
+            //上記のどれにも当てはまらないならOK
+            //入力した単語を直前の単語に
+            lastWord = newWord;
+            usedWords.push(newWord);
+            document.getElementById('lastWord').textContent = newWord;
+            lastChar = getLastValidChar(lastWord);
+            document.getElementById('lastChar').textContent = lastChar;
+            //新しいリストの要素を作成
+            const listItem = document.createElement('li');
+            listItem.textContent = newWord;
+            wordListElement.appendChild(listItem);
+            //入力画面をリセット
+            inputWordElement.value = "";
+            lengthIndex = getRandomLengthIndex();
+            updateLengthDisplay();
+        }
+
+        function resetGame() {
+            lastWord = "";
+            usedWords = [];
+            lastChar = getRandomHiragana();
+            lengthIndex = getRandomLengthIndex();
+            document.getElementById('lastWord').textContent = lastChar;
+            document.getElementById('inputWord').value = "";
+            document.getElementById('message').textContent = "";
+            document.getElementById('gameOver').textContent = "";
+            document.getElementById('wordList').innerHTML = "";
+            document.getElementById('lastChar').textContent = lastChar;
+            updateLengthDisplay();
+            document.getElementById('inputArea').style.display = 'block';  
+        }
+
+        // 初回ゲーム開始時にリセットを呼び出す
+        window.onload = resetGame;
+    </script>
+</body>
+</html>
